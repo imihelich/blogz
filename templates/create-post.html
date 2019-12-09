@@ -1,15 +1,20 @@
-{% extends 'base.html'%}
+{% extends 'base.html' %}
 {% block content %}
 
 <form action="/newpost" method="post">
     <label for="title">Post Title:</label>
     <input type="text" name="title" id="title">
     <br>
+    {% if "title_error" in errors %}
+    <span class="error">"Invalid post title.</span>
+    {% endif %}
     <label for="body">Post Body:</label>
-    <input type="text" name="title" id="title">
+    <input type="text" name="body" id="body">
+    {% if "body_error" in errors %}
+    <span class="error">"Invalid post body.</span>
+    {% endif %}
     <br>
     <input type="submit" value="Submit">
 </form>
-
 
 {% endblock %}
