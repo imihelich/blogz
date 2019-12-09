@@ -10,7 +10,7 @@ db = SQLAlchemy(app)
 class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(120), unique=True)
+    title = db.Column(db.String(120))
     body = db.Column(db.String(2000))
 
     def __init__(self, title, body):
@@ -40,20 +40,22 @@ def blog_posts():
 @app.route('/newpost', methods=['GET','POST'])
 def create_post():
     if request.method == 'POST':
+        title = ""
+        body = ""
         title = request.form['title']
         body = request.form['body']
         error_list = []
         if title == "":
-            error_list = error_list.append('title_error')
+            error_list.append('title_error')
         if body == "":
-            error_list = error_list.append('body_error')
+            error_list.append('body_error')
         if error_list != []:
-            return render_template ('create-post.html', errors=error_list)
+            return render_template ('create-post.html', errors=error_list, p_title=title, p_body=body)
         blog = Blog(title=title, body=body)
         db.session.add(blog)
         db.session.commit()
         return redirect ('/blog'+'?post='+str(blog.id))
-    return render_template ('create-post.html', errors=[])
+    return render_template ('create-post.html', errors=[], p_title="", p_body="")
 
 if __name__ == '__main__':
     app.run()
