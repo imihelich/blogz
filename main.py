@@ -12,13 +12,26 @@ app.secret_key = 'y337kjhvsdjhfvsjhdvf'
 #---------------------------------------------------
 #  || Database Classes for Blog & User Tables  ||
 #---------------------------------------------------
+class User(db.Model):
 
-class Blog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(120), unique=True)
+    hash_pass = db.Column(db.String(120))
+    blogs = db.relationship('Blog', backref='owner')
+
+    def __init__(self, username, password):
+        self.username = username
+        self.hash_pass = make_pw_hash(password)
+
+    def __repr__(self):
+        return self.username
+
+class Blog(db.Model): #never call owner id of blog, call user to ask id
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120))
     body = db.Column(db.String(2000))
-    owner_id = db.relationship('User', backref='blog')
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __init__(self, title, body, owner):
         self.title = title
@@ -26,37 +39,16 @@ class Blog(db.Model):
         self.owner = owner
 
     def __repr__(self):
-        return '<Blog %r>' % self.title
-
-class User(db.Model):
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(120), unique=True)
-    hash_pass = db.Column(db.String(120))
-    blogs = db.Column(db.Integer, db.ForeignKey('blog.id'))
-
-    def __init__(self, username, password):
-        self.username = username
-        self.hash_pass = make_pw_hash(password)
-
-    def __repr__(self):
-        return '<Blog %r>' % self.username
+        return self.title
 
 #---------------------------------------------------
 #  ||             Helper Functions            ||
 #---------------------------------------------------
-def get_user():
-    return User.query.filter_by(username=session['username']).first()
-
-def get_user_posts(user): 
-    return Blog.query.filter_by(owner_id=user).all()
-
-def get_all_users(): 
+def get_all_users():
     return User.query.all()
 
 def get_specific_post(post_id):
     return Blog.query.filter_by(id=post_id).first()
-
 #---------------------------------------------------
 #  ||           Index & Navigation            ||
 #---------------------------------------------------
@@ -69,7 +61,7 @@ def require_login():
 
 @app.route('/')
 def index():
-    return render_template('index.html', users=get_all_users())
+    return render_template('index.html', users=get_all_users(), log_user=session.get('username',''))
 
 #---------------------------------------------------
 #   ||       Register & Log In Pages       ||
@@ -87,7 +79,7 @@ def login():
             return redirect('/')
         else:
             flash('User password incorrect, or user does not exist', 'danger')
-    return render_template('login.html')
+    return render_template('login.html', log_user="")
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
@@ -107,10 +99,10 @@ def register():
         else:
             flash("The username <strong>{0}</strong> is already registered".format(username), 'danger')
 
-    return render_template('signup.html')
+    return render_template('signup.html', log_user="")
 
 
-@app.route('/logout', methods=['POST'])
+@app.route('/logout', methods=['GET'])
 def logout():
     del session['username']
     return redirect('/')
@@ -121,30 +113,40 @@ def logout():
 
 @app.route('/blog', methods=['GET'])
 def blog_posts():
-    if request.args.get('user') != "":
-        user_id = request.args.get('user')
-        user_posts = get_user_posts(user_id)
-        return render_template('singleUser.html', blog=user_posts, username=session['username'])
-    #if request.args.get('post') != "":
-      #  post_id = request.args.get('post')
-       # return render_template('blog.html', blog=get_specific_post(post_id), username=session['username'])
+
+    if request.args.get('user') != "": #WORKING PERFECTLY - NO TOUCHIE (finds posts to feed in by user id)
+        author_user = User.query.filter_by(username=request.args.get('user')).first()
+        post_list = Blog.query.filter_by(owner=author_user).all()
+        return render_template('singleUser.html', blog=post_list, username=author_user, log_user=session.get('username',''))
+
+    #if request.args.get('post') != "": GIVEN THE POST ID RETRIEVE WHOLE POST
+        selected_post = Blog.query.filter_by(id=request.args.get('post')).all()
+        post_author = User.query.filter_by(blogs.contains(selected_post))
+        return render_template('blog.html', blog=selected_post, username=post_author, log_user=session.get('username',''))
+
     else:
         return redirect('/')
 
 @app.route('/newpost', methods=['GET','POST'])
 def create_post():
+
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
+
         if title == "":
             flash("title cannot be empty")
+
         if body == "":
             flash("body cannot be empty")
-        blog = Blog(title=title, body=body, owner=session['username'])
+
+        owner = User.query.filter_by(username=session['username']).first()
+        blog = Blog(title=title, body=body, owner=owner)
         db.session.add(blog)
         db.session.commit()
         return redirect ('/blog'+'?post='+str(blog.id))
-    return render_template ('create-post.html')
+
+    return render_template ('create-post.html', log_user=session['username'])
 
 if __name__ == '__main__':
     app.run()
