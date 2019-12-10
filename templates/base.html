@@ -9,8 +9,11 @@
         </style>
     </head>
     <body>
-        <a href="/blog">View Posts</a>
+        <a href="/blog?user={{ username }}">View Posts</a>
         <a href="/newpost">Create New Post</a>
+        <a href="/login">Login</a>
+        <a href="/register">Sign Up</a>
+        <a href="/logout">Log Out</a>
 
         {% block content %}
         {% endblock %}

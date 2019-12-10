@@ -5,6 +5,7 @@
         <h2><a href="/blog?post={{ post.id }}">{{ post.title }}</a></h2>
         <p>{{ post.body }}</p>
         <br>
+        <p><a href="/blog?user={{ username }}">Written by {{ username }}</a></p>
     {% endfor %}
 
 {% endblock %}
