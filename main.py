@@ -12,7 +12,7 @@ app.secret_key = 'y337kjhvsdjhfvsjhdvf'
 #---------------------------------------------------
 #  || Database Classes for Blog & User Tables  ||
 #---------------------------------------------------
-class User(db.Model):
+class User(db.Model): #CANNOT SEE BLOG INFO FROM USER - ONE USER HAS MULTIPLE BLOG POSTS
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), unique=True)
@@ -23,10 +23,7 @@ class User(db.Model):
         self.username = username
         self.hash_pass = make_pw_hash(password)
 
-    def __repr__(self):
-        return self.username
-
-class Blog(db.Model): #never call owner id of blog, call user to ask id
+class Blog(db.Model): # Author ID can be accessed from Blog
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120))
@@ -38,17 +35,14 @@ class Blog(db.Model): #never call owner id of blog, call user to ask id
         self.body = body
         self.owner = owner
 
-    def __repr__(self):
-        return self.title
-
 #---------------------------------------------------
 #  ||             Helper Functions            ||
 #---------------------------------------------------
 def get_all_users():
     return User.query.all()
 
-def get_specific_post(post_id):
-    return Blog.query.filter_by(id=post_id).first()
+def get_all_posts():
+    return Blog.query.all()
 #---------------------------------------------------
 #  ||           Index & Navigation            ||
 #---------------------------------------------------
@@ -114,15 +108,15 @@ def logout():
 @app.route('/blog', methods=['GET'])
 def blog_posts():
 
-    if request.args.get('user') != "": #WORKING PERFECTLY - NO TOUCHIE (finds posts to feed in by user id)
+    if request.args.get('user'): #WORKING PERFECTLY - NO TOUCHIE (finds posts to feed in by user id)
         author_user = User.query.filter_by(username=request.args.get('user')).first()
         post_list = Blog.query.filter_by(owner=author_user).all()
-        return render_template('singleUser.html', blog=post_list, username=author_user, log_user=session.get('username',''))
+        return render_template('singleUser.html', blog=post_list, log_user=session.get('username',''))
 
-    #if request.args.get('post') != "": GIVEN THE POST ID RETRIEVE WHOLE POST
-        selected_post = Blog.query.filter_by(id=request.args.get('post')).all()
-        post_author = User.query.filter_by(blogs.contains(selected_post))
-        return render_template('blog.html', blog=selected_post, username=post_author, log_user=session.get('username',''))
+    if request.args.get('id'): #GIVEN THE POST ID RETRIEVE WHOLE POST
+        post_id = int(request.args.get('id'))
+        user_post = Blog.query.get(post_id)
+        return render_template('blog.html', blog=user_post, log_user=session.get('username',''))
 
     else:
         return redirect('/')
@@ -144,7 +138,7 @@ def create_post():
         blog = Blog(title=title, body=body, owner=owner)
         db.session.add(blog)
         db.session.commit()
-        return redirect ('/blog'+'?post='+str(blog.id))
+        return redirect ('/blog'+'?id='+str(blog.id))
 
     return render_template ('create-post.html', log_user=session['username'])
 
